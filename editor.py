@@ -363,6 +363,22 @@ def exit(command):
     l = l[:-num]
     location = ".".join(l)
 
+def do_list_tag(command):
+    global location
+    tag = t.get_tag(location)
+    if type(tag) in DATA_TYPES[1][0]:
+        print(f"List[{type(tag.value[0]).__name__}]")
+    elif type(tag) in DATA_TYPES[2][0]:
+        for i, j in tag.value.items():
+            if type(j) in DATA_TYPES[0][0]:
+                print("-", i, ":", j.value ,"("+type(j).__name__+")")
+            else:
+                print("-", i, ":", type(j).__name__)
+    elif type(tag) == DataTag:
+        print(f"Error: {location[-1]}: is an object")
+    else:
+        print(f"Error: unknown type {type(tag)}")
+
 t = NBTWalker("player.nbt")
 
 location = ""
@@ -388,7 +404,7 @@ while True:
                 exit(["exit", len(command[1].split("."))])
 
     elif command[0] == "list":
-        pass
+        do_list_tag(command)
     elif command[0] == "set":
         pass
     elif command[0] == "save":
