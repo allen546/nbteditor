@@ -169,6 +169,15 @@ class DataTag(NBT):
 
     def __repr__(self):
         return self.value
+    
+class RootTag(NBT):
+    def __init__(self, tag: amulet_nbt.NamedTag):
+        super().__init__(tag)
+    
+    @property
+    def value(self):
+        return self.tag.compound
+    
 
 class ListTag(DataTag):
     @property
@@ -242,28 +251,6 @@ data = amulet_nbt.load(
             string_decoder=decode_modified_utf8
         )
 
-class TagWalker():
-    def __init__(self, root):
-        self.node = root
-        self.parents = []
-
-    def get_tag(self):
-        for key, tagtype in DATA_TYPES:
-            if type(self.node) in key:
-                return tagtype(self.node)
-        raise ValueError(f"No known tag type for {type(self.node)}")
-
-    def enter(self, index):
-        try:
-            self.node[index]
-        except TypeError:
-            index = int(index)
-        self.parents = self.parents + [self.node]
-        self.node = self.parents[-1][index]
-    def exit(self):
-        self.node = self.parents[-1]
-        self.parents = self.parents[:-1]
-
 def do_list_tag(tag, location, command):
     if type(tag) == ListTag:
             print(f"List[{type(tag.value[0]).__name__}]")
@@ -304,6 +291,7 @@ def do_value(tag, location, walker, command):
                 location.pop()
             tag = walker.get_tag()
 
+
 DATA_TYPES = [
     ([amulet_nbt.ByteTag, amulet_nbt.StringTag, amulet_nbt.IntTag, 
       amulet_nbt.ShortTag, amulet_nbt.IntArrayTag, amulet_nbt.DoubleTag], DataTag),
@@ -311,12 +299,95 @@ DATA_TYPES = [
     ([amulet_nbt.CompoundTag, amulet_nbt.NamedTag], CompoundTag),
 ]
 
-tag = data.compound
+class DoesNotExist(Exception): 
+    pass
 
-walker = TagWalker(tag)
 
-location = []
 
+class NBTWalker:
+    def __init__(self, filename="player.dat"):
+        self.root = amulet_nbt.load(
+            filename,
+            string_decoder=decode_modified_utf8
+        )
+        self._location = ["1"]
+
+    @property
+    def location(self):
+        return ".".join(self.location[1:])
+
+    def _process_location(self, location: str):
+        location = location.split(".")
+        return [1] + location
+        
+    def exists(self, location):
+        return self._exists(self._process_location(location))
+    
+    def get_tag(self, location):
+        return self._get_tag(self._process_location(location))
+    
+    def set_tag(self, location, value):
+        return self._set_tag(self._process_location(location), value)
+    
+    def _set_tag(self, location, value):
+        tag = self.root
+        if self._exists(location):
+            locs = []
+            for loc in location:
+                print(loc)
+                try:
+                    tag[loc]
+                except TypeError:
+                    loc = int(loc)
+                tag = tag[loc]
+                locs.append(loc)
+        else:
+            raise DoesNotExist(repr(location))
+        typeof = type(tag)
+        tag = self.root
+        for loc in locs[:-1]:
+            print(loc)
+            tag = tag[loc]
+        tag[locs[-1]] = typeof(value)
+        
+    def _get_tag(self, location):
+        tag = self.root
+        if self._exists(location):
+            for loc in location:
+                try:
+                    tag[loc]
+                except TypeError:
+                    loc = int(loc)
+                tag = tag[loc]
+            return tag
+        else:
+            raise DoesNotExist(repr(location))
+
+
+    def _exists(self, location):
+        tag = self.root
+        for loc in location:
+            try:
+                tag[loc]
+            except TypeError:
+                try:
+                    loc = int(loc)
+                    tag[loc]
+                except:
+                    return False
+            except:
+                return False
+            tag = tag[loc]
+        return True
+
+t = NBTWalker("player.nbt")
+print(t.get_tag("Pos.0"))
+t.root.save_to("player2.nbt", string_encoder=encode_modified_utf8, compressed=False)
+t.set_tag("Pos.0", -100)
+print(t.get_tag("Pos.0"))
+t.root.save_to("player3.nbt", string_encoder=encode_modified_utf8, compressed=False)
+
+"""
 while True:
     tag = walker.get_tag()
     command = input(f"({filename}) "+".".join(location)+"$ ").split()
@@ -350,8 +421,9 @@ while True:
         if len(command) >= 2:
             if type(tag) is DATA_TYPES[0][1]:
                 if len(command) == 2:
-                    walker.node = type(walker.node)(command[1])
-                    tag = walker.get_tag()
+                    root = walker.parents[0]
+                    print(type(root))
+
                 else:
                     print("Too many arguments:", " ".join(command))
         print("NotImplemented") # - TODO
@@ -364,3 +436,4 @@ while True:
         print(f"Unknown command: \'{command[0]}\'")
 
 
+"""
