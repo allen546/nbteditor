@@ -366,7 +366,7 @@ def do_list_tag(command):
     global location
     tag = t.get_tag(location)
     if type(tag) in DATA_TYPES[1][0]:
-        print(f"List[{type(tag.value[0]).__name__}]")
+        print(f"List[{type(tag.value[0]).__name__}][0:{len(tag)}]")
     elif type(tag) in DATA_TYPES[2][0]:
         for i, j in tag.value.items():
             if type(j) in DATA_TYPES[0][0]:
