@@ -287,7 +287,6 @@ class NBTWalker:
         if self._exists(location):
             locs = []
             for loc in location:
-                print(loc)
                 try:
                     tag[loc]
                 except TypeError:
@@ -299,7 +298,6 @@ class NBTWalker:
         typeof = type(tag)
         tag = self.root
         for loc in locs[:-1]:
-            print(loc)
             tag = tag[loc]
         tag[locs[-1]] = typeof(value)
         
@@ -339,7 +337,9 @@ def enter(command):
         newlocation = location + "." + command[1]
     else:
         newlocation = command[1]
-    if t.exists(location + "." + command[1]):
+    if command[1].startswith("root."):
+        newlocation = ".".join(command[1].split(".")[1:])
+    if t.exists(newlocation):
         location = newlocation
     else:
         print(f"Unknown location: {newlocation}")
@@ -350,11 +350,10 @@ def exit(command):
     if location == "":
         sys.exit()
     l = location.split(".")
-    print(l)
     try:
         num = int(command[1])
     except IndexError:
-        num = 0
+        num = 1
     except Exception as e:
         print(type(e), e.args[0])
         return -1
@@ -379,8 +378,14 @@ def do_list_tag(command):
     else:
         print(f"Error: unknown type {type(tag)}")
 
-t = NBTWalker("player.nbt")
+if len(sys.argv) != 2:
+    import os.path
+    print(f"Usage: {os.path.basename(__file__)} filename")
+    sys.exit(1)
 
+filename = sys.argv[1]
+
+t = NBTWalker(filename)
 location = ""
 
 while True:
@@ -400,13 +405,21 @@ while True:
         elif len(command) == 2:
             if enter(["enter", command[1]]) != -1:
                 print(pprint.pformat(t.get_tag(location).value))
-                print(location, len(command[1].split(".")))
                 exit(["exit", len(command[1].split("."))])
 
     elif command[0] == "list":
         do_list_tag(command)
     elif command[0] == "set":
-        pass
+        if len(command) == 2:
+            # set . value
+            t.set_tag(location, command[1])
+        elif len(command) == 3:
+            # set location value
+            if command[1].startswith("root."):
+                command[1] = command[1].split(".")[1:]
+            else:
+                command[1] = location + "." + command[1]
+            t.set_tag(command[1], command[2])
     elif command[0] == "save":
         if len(command) == 2:
             t.save(command[1])
