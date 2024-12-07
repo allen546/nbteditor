@@ -1,3 +1,4 @@
+import sys
 import amulet_nbt
 import warnings
 import pprint
@@ -244,54 +245,6 @@ class IntArrayTag(DataTag):
     def __repr__(self):
         return self.as_hex()
 
-filename = "dyc.dat"
-
-data = amulet_nbt.load(
-            filename,
-            string_decoder=decode_modified_utf8
-        )
-
-def do_list_tag(tag, location, command):
-    if type(tag) == ListTag:
-            print(f"List[{type(tag.value[0]).__name__}]")
-    elif type(tag) == CompoundTag:
-        for i, j in tag.value.items():
-            if type(j) in DATA_TYPES[0][0]:
-                print("-", i, ":", j.value ,"("+type(j).__name__+")")
-            else:
-                print("-", i, ":", type(j).__name__)
-    elif type(tag) == DataTag:
-        print(f"Error: {location[-1]}: is an object")
-    else:
-        print(f"Error: unknown type {type(tag)}")
-
-def do_value(tag, location, walker, command):
-    if len(command) == 1:
-            print(pprint.pformat(tag.value))
-    else:
-        args = command[1].split(".")
-        i = 0
-        for arg in args:
-            try:
-                walker.enter(arg)
-                tag = walker.get_tag()
-                location.append(arg)
-                i += 1
-            except Exception as e:
-                print(type(e), e.args)
-                for _ in range(i):
-                    walker.exit()
-                    location.pop()
-                tag = walker.get_tag()
-                break
-        else:
-            print(pprint.pformat(tag.value))
-            for _ in range(i):
-                walker.exit()
-                location.pop()
-            tag = walker.get_tag()
-
-
 DATA_TYPES = [
     ([amulet_nbt.ByteTag, amulet_nbt.StringTag, amulet_nbt.IntTag, 
       amulet_nbt.ShortTag, amulet_nbt.IntArrayTag, amulet_nbt.DoubleTag], DataTag),
@@ -303,21 +256,18 @@ class DoesNotExist(Exception):
     pass
 
 
-
 class NBTWalker:
     def __init__(self, filename="player.dat"):
         self.root = amulet_nbt.load(
             filename,
             string_decoder=decode_modified_utf8
         )
-        self._location = ["1"]
-
-    @property
-    def location(self):
-        return ".".join(self.location[1:])
+        self.filename = filename
 
     def _process_location(self, location: str):
         location = location.split(".")
+        if location[0] == "":
+            location = location[1:]
         return [1] + location
         
     def exists(self, location):
@@ -328,6 +278,9 @@ class NBTWalker:
     
     def set_tag(self, location, value):
         return self._set_tag(self._process_location(location), value)
+    
+    def save(self, filename, compressed=False):
+        self.root.save_to(filename, compressed=compressed, string_encoder=encode_modified_utf8)
     
     def _set_tag(self, location, value):
         tag = self.root
@@ -380,60 +333,66 @@ class NBTWalker:
             tag = tag[loc]
         return True
 
-t = NBTWalker("player.nbt")
-print(t.get_tag("Pos.0"))
-t.root.save_to("player2.nbt", string_encoder=encode_modified_utf8, compressed=False)
-t.set_tag("Pos.0", -100)
-print(t.get_tag("Pos.0"))
-t.root.save_to("player3.nbt", string_encoder=encode_modified_utf8, compressed=False)
+def enter(command):
+    global location
+    if location:
+        newlocation = location + "." + command[1]
+    else:
+        newlocation = command[1]
+    if t.exists(location + "." + command[1]):
+        location = newlocation
+    else:
+        print(f"Unknown location: {newlocation}")
+        return -1
+    
+def exit(command):
+    global location
+    if location == "":
+        sys.exit()
+    l = location.split(".")
+    print(l)
+    try:
+        num = int(command[1])
+    except IndexError:
+        num = 0
+    except Exception as e:
+        print(type(e), e.args[0])
+        return -1
+    if num > len(l):
+        sys.exit()
+    l = l[:-num]
+    location = ".".join(l)
 
-"""
+t = NBTWalker("player.nbt")
+
+location = ""
+
 while True:
-    tag = walker.get_tag()
-    command = input(f"({filename}) "+".".join(location)+"$ ").split()
+    command = input(f"({t.filename}) "+location+"$ ").split()
     if not command:
         continue
     command[0] = command[0].lower()
     if command[0].startswith("quit"):
         break
     if command[0] == "enter":
-        args = command[1].split(".")
-        for arg in args:
-            try:
-                walker.enter(arg)
-                tag = walker.get_tag()
-                location.append(arg)
-            except Exception as e:
-                print(type(e), e.args)
-                break
+        enter(command)
     elif command[0] == "exit":
-        try:
-            walker.exit()
-            tag = walker.get_tag()
-            location.pop()
-        except Exception as e:
-            print(type(e), e.args)
+        exit(command)
     elif command[0] == "value":
-        do_value(tag, location, walker, command)
-    elif command[0] == "list":
-        do_list_tag(tag, location, command)
-    elif command[0] == "set":
-        if len(command) >= 2:
-            if type(tag) is DATA_TYPES[0][1]:
-                if len(command) == 2:
-                    root = walker.parents[0]
-                    print(type(root))
-
-                else:
-                    print("Too many arguments:", " ".join(command))
-        print("NotImplemented") # - TODO
-    elif command[0] == "save":
         if len(command) == 1:
-            print("Error: save {filename}")
-        else:
-            tag.save(command[1])
+            print(pprint.pformat(t.get_tag(location).value))
+        elif len(command) == 2:
+            if enter(["enter", command[1]]) != -1:
+                print(pprint.pformat(t.get_tag(location).value))
+                print(location, len(command[1].split(".")))
+                exit(["exit", len(command[1].split("."))])
+
+    elif command[0] == "list":
+        pass
+    elif command[0] == "set":
+        pass
+    elif command[0] == "save":
+        pass
     else:
         print(f"Unknown command: \'{command[0]}\'")
 
-
-"""
