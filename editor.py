@@ -392,7 +392,15 @@ while True:
     elif command[0] == "set":
         pass
     elif command[0] == "save":
-        pass
+        if len(command) == 2:
+            t.save(command[1])
+        elif len(command) == 3:
+            try:   
+                t.save(command[1], bool(int(command[2])))
+            except Exception as e:
+                print(type(e), e.args[0])
+        else:
+            print("Usage: save `filename` [compressed=0]")
     else:
         print(f"Unknown command: \'{command[0]}\'")
 
