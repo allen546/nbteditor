@@ -313,7 +313,7 @@ exit [layers] - exit [layers] layers or 1 layer (default)
 list [location] - list all tags under ([location] | current location)
 value [location] - get the value of ([location] | current location)
 save filename [compressed=0] - save opened file to "filename" with compression=compressed
-del [location] - delete location from file (NotImplemented)
+del [location] - delete location from file
 insert - insert into current location a tag (other values are prompted)
 as_hex - represent current value as hexadecimal     
         (Note: this is raw UUID, different from standard Minecraft UUID format, only 1st section is the same)
