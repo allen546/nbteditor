@@ -1,4 +1,1 @@
-.venv/*
-*.txt 
-*.nbt
-*.dat
+.venv/* 
