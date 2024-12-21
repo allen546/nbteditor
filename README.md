@@ -1,6 +1,6 @@
 # NBTEditor
 
-## Video Demo: [link]()
+## Video Demo: [link](https://www.bilibili.com/video/BV1SEkhYJEWa/)
 
 ## Description
 
@@ -9,7 +9,7 @@ This editor accepts all NBT files such as files in `.minecraft/saves/world/playe
 
 What is NBT (Named Binary Tag) Format? [See This](https://minecraft.fandom.com/wiki/NBT_format)
 
-[Github Repo]{}
+[Github Repo](https://github.com/allen546/nbteditor)
 
 ## How to use
 
